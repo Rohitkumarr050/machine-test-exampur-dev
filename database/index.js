@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { serverConfig } = require('../config/serverConfig');
+const { addDummyProduct } = require('../utils/dummyData');
 
 function mongooseCon()
 {
@@ -13,7 +14,7 @@ function mongooseCon()
             process.exit(1)
         });
 
-        mongoose.connection.on('open', (err) =>
+        mongoose.connection.on('open', async(err) =>
         {
             if (err)
             {
@@ -21,7 +22,9 @@ function mongooseCon()
             }
             else
             {
-                console.log('Mongoose Connection Established');
+                console.log('Mongoose Connection Established', serverConfig.MONGO_DB_URI);
+                await addDummyProduct();
+
             }
         });
 

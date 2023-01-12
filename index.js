@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
+require('dotenv').config()
 const { startRoutes } = require('./routes');
 const { mongooseCon } = require('./database')
 const { serverConfig } = require('./config/serverConfig');
@@ -33,5 +34,4 @@ server.on('listening', async () =>
     console.log('Listening on port-->> ' + port);
     mongooseCon();
     startRoutes(app);
-    await addDummyProduct()
 });
