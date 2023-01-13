@@ -2,7 +2,6 @@ const { default: mongoose } = require('mongoose');
 const { getPoductById } = require('../database/models/product');
 const transactionModel = require('../database/models/transaction');
 const walletModel = require('../database/models/walletModel');
-const { User } = require('../utils/dummyData');
 
 function setupWallet(input)
 {
@@ -16,14 +15,13 @@ function setupWallet(input)
                 return
             }
 
-            // get the userid by name, taking dummy userId 
-            let wallet = await walletModel.getWalletByUserId(User.userId);
+            let wallet = await walletModel.getWalletByUserName(name);
             if (wallet) {
                 reject({ message: 'wallet Already exist' })
                 return;
             }
             let walletObj = {
-                userId: User.userId,
+                userName: name,
                 balance: `${parseFloat(balance.toFixed(4))}` ,
                 createdAt: new Date()
             }
@@ -31,7 +29,7 @@ function setupWallet(input)
 
             let transObj =
             {
-                userId: User.userId,
+                userName: name,
                 walletId: newWallet._id,
                 transactionType: "credit",
                 status: "success",
@@ -72,7 +70,7 @@ function getWallet(input)
             const data = {
                 walletId: wallet._id,
                 balance: Number(wallet.balance),
-                name: User.name,    // get user by wallet.userId , using dummy data for user
+                name: wallet.userName,    
                 createdAt: wallet.createdAt
             }
 
@@ -111,15 +109,13 @@ function addCredit(input, params)
                 let newBalance = Math.floor((Number(wallet.balance) + amount)*10000)/10000;
     
                 let walletObj = {
-                    userId: User.userId,
                     balance: `${parseFloat(newBalance.toFixed(4))}`,
-                    createdAt: new Date()
                 }
                 let res = await walletModel.updateWallet(walletObj, walletId, session);
     
                 let transObj =
                 {
-                    userId: User.userId,
+                    userName: wallet.userName,
                     walletId: walletId,
                     transactionType: "credit",
                     status: "success",
@@ -127,14 +123,24 @@ function addCredit(input, params)
                     description,
                     createdAt: new Date()
                 }
-                const trans = await transactionModel.addtransactionWithTransaction(transObj, session)
-    
+                const trans = await transactionModel.addtransactionWithTransaction(transObj, session);
+
+                let type='';
+                let transactionId='';
+                let createdAt = '';
+                if(trans.length > 0)
+                {
+                    type = trans[0].transactionType;
+                    transactionId = trans[0]._id;
+                    createdAt = trans[0].createdAt
+                }
+
                 data = {
                     balance: Number(res.balance),
-                    transactionId: trans._id,
+                    transactionId,
                     description,
-                    type: trans.transactionType,
-                    createdAt: trans.createdAt
+                    type,
+                    createdAt
                 }
     
                 await session.commitTransaction();
@@ -194,33 +200,33 @@ function productPurchase(params, input)
                 reject({ message: 'product not found', data: null })
             }
 
+            let wallet = await walletModel.getWalletById(walletId);
+            if (!wallet) {
+                reject({ message: 'wallet not found', data: null })
+            }
+            
+            let productPrice = Number(product.price) * qty;   // multiple qty
+            let balance = Number(wallet.balance);
+
+            if (balance <= 1 || productPrice > balance) {
+                reject({ message: 'Insufficent balance', data: null })
+            }
+
+            let newBalance = Math.floor((balance - productPrice) * 1000) / 1000;
+
             let session = await mongoose.startSession()
             try {
 
                 session.startTransaction();
 
-                let wallet = await walletModel.getWalletById(walletId);
-                if (!wallet) {
-                    reject({ message: 'wallet not found', data: null })
-                }
-                let productPrice = Number(product.price) * qty;   // multiple qty
-                let balance = Number(wallet.balance);
-
-                if (balance <= 1 || productPrice > balance) {
-                    reject({ message: 'Insufficent balance', data: null })
-                }
-
-                let newBalance = Math.floor((balance - productPrice) * 1000) / 1000;
                 let walletObj = {
-                    userId: User.userId,
                     balance: `${parseFloat(newBalance.toFixed(4))}`,   //
-                    createdAt: new Date()
                 }
-                let walletRes = await walletModel.updateWallet(walletObj, walletId);
+                let walletRes = await walletModel.updateWallet(walletObj, walletId, session);
 
                 let transObj =
                 {
-                    userId: User.userId,
+                    userName: wallet.userName,
                     walletId: walletId,
                     transactionType: "debit",
                     status: "success",
@@ -228,15 +234,27 @@ function productPurchase(params, input)
                     description: `Purchase the product: ${product.name}`,
                     createdAt: new Date()
                 }
-                const trans = await transactionModel.addtransaction(transObj)
+                const trans = await transactionModel.addtransactionWithTransaction(transObj, session);
+
+                let type='';
+                let transactionId='';
+                let createdAt = '';
+                let description = '';
+                if(trans.length > 0)
+                {
+                    type = trans[0].transactionType;
+                    transactionId = trans[0]._id;
+                    createdAt = trans[0].createdAt
+                    description = trans[0].description
+                }
 
                 data = {
                     balance: newBalance,
                     productId,
-                    transactionId: trans._id,
-                    description: trans.description,
-                    type: trans.transactionType,
-                    createdAt: trans.createdAt
+                    transactionId,
+                    description,
+                    type,
+                    createdAt
                 }
 
                 await session.commitTransaction();

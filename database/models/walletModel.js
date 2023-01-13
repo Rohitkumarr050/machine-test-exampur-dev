@@ -10,10 +10,10 @@ async function addWallet(wallet)
     }
 }
 
-async function getWalletByUserId(userId)
+async function getWalletByUserName(userName)
 {
     try {
-        let wallet = await walletSchema.findOne({ userId });
+        let wallet = await walletSchema.findOne({ userName });
         return wallet
     } catch (error) {
         throw error;
@@ -41,4 +41,4 @@ async function updateWallet(updateObj, id, session)
 }
 
 
-module.exports = { addWallet, getWalletByUserId, getWalletById, updateWallet }
+module.exports = { addWallet, getWalletByUserName, getWalletById, updateWallet }

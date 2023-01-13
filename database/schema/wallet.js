@@ -3,7 +3,8 @@ const ObjectId = mongoose.Schema.ObjectId
 
 const walletSchema = new mongoose.Schema(
     {
-        userId: {type: ObjectId,  ref: "user"} ,
+        // userId: {type: ObjectId,  ref: "user"} ,
+        userName: { type: String},
         balance: { type: String, required: true },
         status: { type: String, enum: ["active", "inactive"], default: "active" },
         createdAt: { type: Date },
